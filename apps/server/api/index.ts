@@ -1,6 +1,4 @@
 import { hello } from '../routes/hello';
-import db from '../db';
-import { getBearerToken, jwtVerify, type AuthUser } from '../utils/auth';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -17,36 +15,10 @@ function withCors(handler: (req: Request) => Response | Promise<Response>) {
   };
 }
 
-function withAuth(handler: (req: Request) => Response | Promise<Response>) {
-  return async (req: Request) => {
-    const token = getBearerToken(req);
-    if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const payload = await jwtVerify(token);
-    if (!payload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    return handler(req);
-  };
-}
-
-function withAuthContext(handler: (req: Request, user: AuthUser) => Response | Promise<Response>) {
-  return async (req: Request) => {
-    const token = getBearerToken(req);
-    if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const payload = await jwtVerify(token);
-    if (!payload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const user = db
-      .query('SELECT id, name, email FROM users WHERE id = ?')
-      .get(payload.sub as string) as AuthUser | null;
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    return handler(req, user);
-  };
-}
-
 const server = Bun.serve({
   port: 3000,
   routes: {
     '/api/hello': { GET: withCors(hello) },
-    // Add more routes here:
-    // '/api/things': { GET: withCors(withAuth(listThings)) },
   },
   fetch(req) {
     if (req.method === 'OPTIONS') {
